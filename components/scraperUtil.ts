@@ -1,7 +1,6 @@
 import axios from "axios";
 import * as fs from "fs";
 import * as cheerio from "cheerio";
-import { NullLiteral } from "typescript";
 
 //Make a class
 class ScaperUtil {
