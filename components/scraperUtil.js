@@ -41,23 +41,32 @@ var fs = require("fs");
 var cheerio = require("cheerio");
 //Make a class
 var ScaperUtil = /** @class */ (function () {
-    function ScaperUtil(url) {
+    function ScaperUtil(url, anchorTag) {
         this.baseUrl = url;
+        this.dataAnchorTag = anchorTag;
     }
-    ScaperUtil.prototype.getHtml = function (url) {
+    ScaperUtil.prototype.getHtmlAndSaveLocally = function (url) {
         return __awaiter(this, void 0, void 0, function () {
-            var response, rawHtml, filename, savedHtmlResponse;
+            var response, rawHtml, filename, savedRawHtmlResponse, savedCleanedHtmlResponse;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, axios_1.default.get("".concat(this.baseUrl).concat(url))];
                     case 1:
                         response = _a.sent();
                         rawHtml = response.data;
-                        filename = "/".concat(url.replace(/\//g, ""), "-").concat(Date.now(), ".html");
-                        return [4 /*yield*/, this.saveHtml(filename, rawHtml)];
+                        filename = "/".concat(url.replace(/\//g, "-"), "-").concat(Date.now(), ".html");
+                        //Check if the directory exists
+                        return [4 /*yield*/, this.checkForDirectory(filename)];
                     case 2:
-                        savedHtmlResponse = _a.sent();
-                        return [2 /*return*/, savedHtmlResponse];
+                        //Check if the directory exists
+                        _a.sent();
+                        return [4 /*yield*/, this.saveRawHtml(filename, rawHtml)];
+                    case 3:
+                        savedRawHtmlResponse = _a.sent();
+                        return [4 /*yield*/, this.saveCleanedHtml(filename, rawHtml)];
+                    case 4:
+                        savedCleanedHtmlResponse = _a.sent();
+                        return [2 /*return*/, { savedRawHtmlResponse: savedRawHtmlResponse, savedCleanedHtmlResponse: savedCleanedHtmlResponse }];
                 }
             });
         });
@@ -67,54 +76,84 @@ var ScaperUtil = /** @class */ (function () {
             var promises;
             var _this = this;
             return __generator(this, function (_a) {
-                promises = urls.map(function (url) { return _this.getHtml(url); });
+                promises = urls.map(function (url) { return _this.getHtmlAndSaveLocally(url); });
                 return [2 /*return*/, Promise.all(promises)];
             });
         });
     };
-    ScaperUtil.prototype.saveHtml = function (fileName, html) {
+    //Checks for the directory of a given file name, and creates it if it doesn't exist.
+    //It also creates the scraped-data directory if it doesn't exist
+    ScaperUtil.prototype.checkForDirectory = function (fileName) {
         return __awaiter(this, void 0, void 0, function () {
-            var fileNameWithoutFileType, fullRawFilePath, fullCleanedFilePath, cleanedHtml;
+            var fileNameWithoutFileType;
             return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        fileNameWithoutFileType = fileName.split(".")[0];
-                        fullRawFilePath = "".concat(__dirname, "/").concat(fileNameWithoutFileType, "/").concat("RAW" + "-" + fileName.substring(1));
-                        fullCleanedFilePath = "".concat(__dirname, "/").concat(fileNameWithoutFileType, "/").concat("CLEAN" + "-" + fileName.substring(1));
-                        //Create the directory if it doesn't exist
-                        if (!fs.existsSync("".concat(__dirname, "/").concat(fileNameWithoutFileType))) {
-                            fs.mkdirSync("".concat(__dirname, "/").concat(fileNameWithoutFileType));
-                        }
-                        fs.writeFile(fullRawFilePath, html, function (err) {
-                            if (err)
-                                throw err;
-                            return "Raw File has been saved at ".concat(fullRawFilePath);
-                        });
-                        return [4 /*yield*/, this.cleanHtml(html)];
-                    case 1:
-                        cleanedHtml = _a.sent();
-                        console.log(cleanedHtml, "cleanedHtml");
-                        //Save the cleaned html
-                        fs.writeFile(fullCleanedFilePath, cleanedHtml, function (err) {
-                            if (err)
-                                throw err;
-                            return "Cleaned file has been saved at ".concat(fullCleanedFilePath);
-                        });
-                        return [2 /*return*/];
+                fileNameWithoutFileType = fileName.split(".")[0];
+                //Checkl for scraped-data directory and create it if it doesn't exist
+                if (!fs.existsSync("".concat(__dirname, "/scraped-data"))) {
+                    fs.mkdirSync("".concat(__dirname, "/scraped-data"));
                 }
+                //Create the directory if it doesn't exist
+                if (!fs.existsSync("".concat(__dirname, "/scraped-data").concat(fileNameWithoutFileType))) {
+                    fs.mkdirSync("".concat(__dirname, "/scraped-data").concat(fileNameWithoutFileType));
+                }
+                return [2 /*return*/];
+            });
+        });
+    };
+    ScaperUtil.prototype.saveRawHtml = function (fileName, html) {
+        return __awaiter(this, void 0, void 0, function () {
+            var fileNameWithoutFileType, fullRawFilePath;
+            return __generator(this, function (_a) {
+                fileNameWithoutFileType = fileName.split(".")[0];
+                fullRawFilePath = "".concat(__dirname, "/scraped-data").concat(fileNameWithoutFileType, "/").concat("RAW" + "-" + fileName.substring(1));
+                fs.writeFile(fullRawFilePath, html, function (err) {
+                    if (err)
+                        throw err;
+                    return "Raw File has been saved at ".concat(fullRawFilePath);
+                });
+                return [2 /*return*/];
+            });
+        });
+    };
+    ScaperUtil.prototype.saveCleanedHtml = function (fileName, html) {
+        return __awaiter(this, void 0, void 0, function () {
+            var fileNameWithoutFileType, fullCleanedFilePath, cleanedHtml;
+            return __generator(this, function (_a) {
+                fileNameWithoutFileType = fileName.split(".")[0];
+                fullCleanedFilePath = "".concat(__dirname, "/scraped-data/").concat(fileNameWithoutFileType, "/").concat("CLEAN" + "-" + fileName.substring(1));
+                cleanedHtml = this.cleanHtml(html);
+                console.log(cleanedHtml, "cleanedHtml");
+                //Save the cleaned html
+                fs.writeFile(fullCleanedFilePath, cleanedHtml, function (err) {
+                    if (err)
+                        throw err;
+                    return "Cleaned file has been saved at ".concat(fullCleanedFilePath);
+                });
+                return [2 /*return*/];
             });
         });
     };
     ScaperUtil.prototype.cleanHtml = function (html) {
+        //Removes everything outside of the body tags of an html document
+        var $ = cheerio.load(html);
+        var bodyOfHtml = $("body").html();
+        //Remove all script tags
+        var cleanedHtml = bodyOfHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+        return cleanedHtml;
+    };
+    ScaperUtil.prototype.cleanHtmlByTag = function (html, tag) {
         return __awaiter(this, void 0, void 0, function () {
-            var $, bodyOfHtml, cleanedHtml;
+            var $, bodyOfHtml;
             return __generator(this, function (_a) {
                 $ = cheerio.load(html);
-                bodyOfHtml = $("body").html();
-                cleanedHtml = bodyOfHtml === null || bodyOfHtml === void 0 ? void 0 : bodyOfHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-                return [2 /*return*/, cleanedHtml];
+                bodyOfHtml = $(tag).html();
+                console.log(bodyOfHtml, "bodyOfHtml");
+                return [2 /*return*/];
             });
         });
+    };
+    ScaperUtil.prototype.setDataAnchorTag = function (dataAnchorTag) {
+        this.dataAnchorTag = dataAnchorTag;
     };
     return ScaperUtil;
 }());
@@ -122,14 +161,11 @@ function main() {
     return __awaiter(this, void 0, void 0, function () {
         var scraper;
         return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    scraper = new ScaperUtil("https://www.entrepreneur.com/");
-                    return [4 /*yield*/, scraper.getHtml("/franchises/directory/fastest-growing-ranking")];
-                case 1:
-                    _a.sent();
-                    return [2 /*return*/];
-            }
+            scraper = new ScaperUtil("https://www.entrepreneur.com/");
+            // await scraper.getHtmlAndSaveLocally("/franchises/directory/fastest-growing-ranking");
+            scraper.setDataAnchorTag("<table class='w-full bg-white shadow overflow-hidden sm:rounded-md table-fixed'>");
+            console.log(scraper.dataAnchorTag);
+            return [2 /*return*/];
         });
     });
 }
