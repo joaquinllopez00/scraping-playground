@@ -10,11 +10,7 @@ class DataExtractionUtil {
   }
 
   //Function that extracts the html content from a local directory
-  async getHtml() {
-    const html = fs.readFileSync(this.filePath, "utf8");
-
-    return html;
-  }
+  async getHtml() {}
 
   //Function that segments data on an HTML page, and extracts insights from the inner HTML
   //This is better for data found on list-like websites
@@ -27,8 +23,6 @@ class DataExtractionUtil {
   ) {
     //Get the html
     const html = await this.getHtml();
-
-    console.log(html, "html");
 
     //Load the html into cheerio
     const $ = cheerio.load(html);

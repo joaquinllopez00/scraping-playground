@@ -5,8 +5,8 @@ import * as cheerio from "cheerio";
 //Make a class
 class ScaperUtil {
   baseUrl: string;
-  dataAnchorTag?: string;
-  constructor(url: string, anchorTag?: string) {
+  dataAnchorTag: string;
+  constructor(url: string, anchorTag: string) {
     this.baseUrl = url;
     this.dataAnchorTag = anchorTag;
   }
@@ -24,7 +24,12 @@ class ScaperUtil {
     await this.checkForDirectory(filename);
 
     await this.saveRawHtml(filename, rawHtml);
-    await this.saveCleanedHtml(filename, rawHtml);
+    let cleanedHtml = await this.saveCleanedHtml(filename, rawHtml);
+
+    //If the dataAnchorTag is present, then saveDataAnchorTagHtml
+    if (this.dataAnchorTag) {
+      await this.saveDataAnchorTagHtml(filename, cleanedHtml);
+    }
 
     return "Data was saved!";
   }
@@ -64,6 +69,8 @@ class ScaperUtil {
       if (err) throw err;
       return `Raw File has been saved at ${fullRawFilePath}`;
     });
+
+    return html;
   }
 
   async saveCleanedHtml(fileName: string, html: string) {
@@ -76,9 +83,29 @@ class ScaperUtil {
     }`;
 
     //Clean the html
-    const cleanedHtml: string = this.cleanHtml(html);
-    console.log(cleanedHtml, "cleanedHtml");
+    const cleanedHtml: string = this.cleanHtml(html, "body");
 
+    //Save the cleaned html
+    fs.writeFile(fullCleanedFilePath, cleanedHtml, (err) => {
+      if (err) throw err;
+      return `Cleaned file has been saved at ${fullCleanedFilePath}`;
+    });
+
+    return cleanedHtml;
+  }
+
+  async saveDataAnchorTagHtml(fileName: string, html: string) {
+    //Get filename without filetype
+    const fileNameWithoutFileType = fileName.split(".")[0];
+
+    //Construct the filename(s)
+    const fullCleanedFilePath = `${__dirname}/scraped-data/${fileNameWithoutFileType}/${
+      "TAG" + "-" + fileName.substring(1)
+    }`;
+
+    //Clean the html
+    const cleanedHtml: string = this.cleanHtml(html, this.dataAnchorTag);
+    // console.log(cleanedHtml);
     //Save the cleaned html
     fs.writeFile(fullCleanedFilePath, cleanedHtml, (err) => {
       if (err) throw err;
@@ -86,23 +113,20 @@ class ScaperUtil {
     });
   }
 
-  cleanHtml(html: string): string {
-    //Removes everything outside of the body tags of an html document
+  cleanHtml(html: string, tag: string): string {
+    //Removes everything outside of tags of an html document
     const $: any = cheerio.load(html);
-    const bodyOfHtml: string = $("body").html();
+
+    //Get all occurances of tag and append array
+    let tagElementsArr: string[] = [];
+    $(tag).each((i: number, el: any) => tagElementsArr.push($(el).html()));
+
+    const htmlInTags: string = tagElementsArr.join("");
 
     //Remove all script tags
-    const cleanedHtml: string = bodyOfHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+    const cleanedHtml: string = htmlInTags.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
     return cleanedHtml;
-  }
-
-  async cleanHtmlByTag(html: string, tag: string) {
-    //Removes everything outside of the tag argument
-    const $ = cheerio.load(html);
-    const bodyOfHtml = $(tag).html();
-
-    console.log(bodyOfHtml, "bodyOfHtml");
   }
 
   setDataAnchorTag(dataAnchorTag: string): void {
@@ -112,10 +136,12 @@ class ScaperUtil {
 
 async function main() {
   //Instantiate a new ScraperUtil
-  const scraper = new ScaperUtil("https://www.entrepreneur.com/");
+  const scraper = new ScaperUtil(
+    "https://www.entrepreneur.com/",
+    'table[class="w-full bg-white shadow overflow-hidden sm:rounded-md table-fixed"]',
+  );
 
-  // await scraper.getHtmlAndSaveLocally("/franchises/directory/fastest-growing-ranking");
-  scraper.setDataAnchorTag("<table class='w-full bg-white shadow overflow-hidden sm:rounded-md table-fixed'>");
+  await scraper.getHtmlAndSaveLocally("/franchises/directory/fastest-growing-ranking");
 }
 
 main();

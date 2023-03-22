@@ -47,7 +47,7 @@ var ScaperUtil = /** @class */ (function () {
     }
     ScaperUtil.prototype.getHtmlAndSaveLocally = function (url) {
         return __awaiter(this, void 0, void 0, function () {
-            var response, rawHtml, filename, savedRawHtmlResponse, savedCleanedHtmlResponse;
+            var response, rawHtml, filename, cleanedHtml;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, axios_1.default.get("".concat(this.baseUrl).concat(url))];
@@ -62,11 +62,16 @@ var ScaperUtil = /** @class */ (function () {
                         _a.sent();
                         return [4 /*yield*/, this.saveRawHtml(filename, rawHtml)];
                     case 3:
-                        savedRawHtmlResponse = _a.sent();
+                        _a.sent();
                         return [4 /*yield*/, this.saveCleanedHtml(filename, rawHtml)];
                     case 4:
-                        savedCleanedHtmlResponse = _a.sent();
-                        return [2 /*return*/, { savedRawHtmlResponse: savedRawHtmlResponse, savedCleanedHtmlResponse: savedCleanedHtmlResponse }];
+                        cleanedHtml = _a.sent();
+                        if (!this.dataAnchorTag) return [3 /*break*/, 6];
+                        return [4 /*yield*/, this.saveDataAnchorTagHtml(filename, cleanedHtml)];
+                    case 5:
+                        _a.sent();
+                        _a.label = 6;
+                    case 6: return [2 /*return*/, "Data was saved!"];
                 }
             });
         });
@@ -111,7 +116,7 @@ var ScaperUtil = /** @class */ (function () {
                         throw err;
                     return "Raw File has been saved at ".concat(fullRawFilePath);
                 });
-                return [2 /*return*/];
+                return [2 /*return*/, html];
             });
         });
     };
@@ -121,8 +126,25 @@ var ScaperUtil = /** @class */ (function () {
             return __generator(this, function (_a) {
                 fileNameWithoutFileType = fileName.split(".")[0];
                 fullCleanedFilePath = "".concat(__dirname, "/scraped-data/").concat(fileNameWithoutFileType, "/").concat("CLEAN" + "-" + fileName.substring(1));
-                cleanedHtml = this.cleanHtml(html);
-                console.log(cleanedHtml, "cleanedHtml");
+                cleanedHtml = this.cleanHtml(html, "body");
+                //Save the cleaned html
+                fs.writeFile(fullCleanedFilePath, cleanedHtml, function (err) {
+                    if (err)
+                        throw err;
+                    return "Cleaned file has been saved at ".concat(fullCleanedFilePath);
+                });
+                return [2 /*return*/, cleanedHtml];
+            });
+        });
+    };
+    ScaperUtil.prototype.saveDataAnchorTagHtml = function (fileName, html) {
+        return __awaiter(this, void 0, void 0, function () {
+            var fileNameWithoutFileType, fullCleanedFilePath, cleanedHtml;
+            return __generator(this, function (_a) {
+                fileNameWithoutFileType = fileName.split(".")[0];
+                fullCleanedFilePath = "".concat(__dirname, "/scraped-data/").concat(fileNameWithoutFileType, "/").concat("TAG" + "-" + fileName.substring(1));
+                cleanedHtml = this.cleanHtml(html, this.dataAnchorTag);
+                // console.log(cleanedHtml);
                 //Save the cleaned html
                 fs.writeFile(fullCleanedFilePath, cleanedHtml, function (err) {
                     if (err)
@@ -133,24 +155,18 @@ var ScaperUtil = /** @class */ (function () {
             });
         });
     };
-    ScaperUtil.prototype.cleanHtml = function (html) {
-        //Removes everything outside of the body tags of an html document
+    ScaperUtil.prototype.cleanHtml = function (html, tag) {
+        //Removes everything outside of tags of an html document
         var $ = cheerio.load(html);
-        var bodyOfHtml = $("body").html();
-        //Remove all script tags
-        var cleanedHtml = bodyOfHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-        return cleanedHtml;
-    };
-    ScaperUtil.prototype.cleanHtmlByTag = function (html, tag) {
-        return __awaiter(this, void 0, void 0, function () {
-            var $, bodyOfHtml;
-            return __generator(this, function (_a) {
-                $ = cheerio.load(html);
-                bodyOfHtml = $(tag).html();
-                console.log(bodyOfHtml, "bodyOfHtml");
-                return [2 /*return*/];
-            });
+        //Get all occurances of tag and append array
+        var tagElementsArr = [];
+        $(tag).each(function (i, el) {
+            return tagElementsArr.push($(el).html());
         });
+        var htmlInTags = tagElementsArr.join("");
+        //Remove all script tags
+        var cleanedHtml = htmlInTags.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+        return cleanedHtml;
     };
     ScaperUtil.prototype.setDataAnchorTag = function (dataAnchorTag) {
         this.dataAnchorTag = dataAnchorTag;
@@ -161,11 +177,14 @@ function main() {
     return __awaiter(this, void 0, void 0, function () {
         var scraper;
         return __generator(this, function (_a) {
-            scraper = new ScaperUtil("https://www.entrepreneur.com/");
-            // await scraper.getHtmlAndSaveLocally("/franchises/directory/fastest-growing-ranking");
-            scraper.setDataAnchorTag("<table class='w-full bg-white shadow overflow-hidden sm:rounded-md table-fixed'>");
-            console.log(scraper.dataAnchorTag);
-            return [2 /*return*/];
+            switch (_a.label) {
+                case 0:
+                    scraper = new ScaperUtil("https://www.entrepreneur.com/", 'table[class="w-full bg-white shadow overflow-hidden sm:rounded-md table-fixed"]');
+                    return [4 /*yield*/, scraper.getHtmlAndSaveLocally("/franchises/directory/fastest-growing-ranking")];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/];
+            }
         });
     });
 }
