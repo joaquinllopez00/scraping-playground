@@ -42,36 +42,41 @@ var cheerio = require("cheerio");
 var DataExtractionUtil = /** @class */ (function () {
     function DataExtractionUtil(filePath) {
         this.filePath = filePath;
+        this.workableData = "";
     }
     //Function that extracts the html content from a local directory
-    DataExtractionUtil.prototype.getHtml = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var html;
-            return __generator(this, function (_a) {
-                html = fs.readFileSync(this.filePath, "utf8");
-                return [2 /*return*/, html];
-            });
-        });
+    DataExtractionUtil.prototype.setWorkableData = function () {
+        // Open the file for reading
+        var fd = fs.openSync(this.filePath, "r");
+        // Read the file
+        var buffer = Buffer.alloc(10000000);
+        var bytesRead = fs.readSync(fd, buffer, 0, 10000000, 0);
+        // Close the file
+        fs.closeSync(fd);
+        // Convert the buffer to a string
+        var data = buffer.toString("utf8", 0, bytesRead);
+        this.workableData = data;
     };
     //Function that segments data on an HTML page, and extracts insights from the inner HTML
     //This is better for data found on list-like websites
     DataExtractionUtil.prototype.extractDataBySeperator = function (seperator, htmlTagInsightPairings) {
         return __awaiter(this, void 0, void 0, function () {
-            var html, $, data;
+            var $, data;
             return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.getHtml()];
-                    case 1:
-                        html = _a.sent();
-                        console.log(html, "html");
-                        $ = cheerio.load(html);
-                        //Verify seperator exists on the html
-                        if (!html.includes(seperator)) {
-                            throw new Error("Seperator not found in html");
-                        }
-                        data = [];
-                        return [2 /*return*/];
-                }
+                //Get the html
+                this.setWorkableData();
+                $ = cheerio.load(this.workableData);
+                data = [];
+                console.log("Workable Data: ", this.workableData);
+                console.log("Seperator: ", seperator);
+                //Loop through the seperator elements
+                $(seperator).each(function (i, element) {
+                    //Create an object to hold the data for this element
+                    var dataObject = {};
+                    console.log("Element: ", element);
+                });
+                //Return the data
+                return [2 /*return*/, data];
             });
         });
     };
@@ -83,8 +88,8 @@ function main() {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dataExtractionUtil = new DataExtractionUtil("".concat(__dirname, "/franchisesdirectoryfastest-growing-ranking-1679463855444/CLEAN-franchisesdirectoryfastest-growing-ranking-1679463855444.html"));
-                    return [4 /*yield*/, dataExtractionUtil.extractDataBySeperator("<tr class='border-b border-grey-100 hover:bg-blue-50 cursor-pointer '>", [
+                    dataExtractionUtil = new DataExtractionUtil("".concat(__dirname, "/scraped-data/-franchises-directory-fastest-growing-ranking-1679509968840/TAG--franchises-directory-fastest-growing-ranking-1679509968840.html"));
+                    return [4 /*yield*/, dataExtractionUtil.extractDataBySeperator("tr[class='border-b border-grey-100 hover:bg-blue-50 cursor-pointer']", [
                             {
                                 elementSelector: "<p class='text-sm text-gray-700'>",
                                 category: "Intial Investment",

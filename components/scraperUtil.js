@@ -160,9 +160,7 @@ var ScaperUtil = /** @class */ (function () {
         var $ = cheerio.load(html);
         //Get all occurances of tag and append array
         var tagElementsArr = [];
-        $(tag).each(function (i, el) {
-            return tagElementsArr.push($(el).html());
-        });
+        $(tag).each(function (i, el) { return tagElementsArr.push($(el).html()); });
         var htmlInTags = tagElementsArr.join("");
         //Remove all script tags
         var cleanedHtml = htmlInTags.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
